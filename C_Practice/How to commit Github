@@ -1,0 +1,75 @@
+[student@localhost ~]$ cd Desktop
+[student@localhost Desktop]$ ll
+total 0
+[student@localhost Desktop]$ mkdir INeedHelp
+[student@localhost Desktop]$ ll
+total 4
+drwxrwxr-x. 2 student student 4096 Mar  8 10:16 INeedHelp
+[student@localhost Desktop]$ cd INeedHelp
+[student@localhost INeedHelp]$ git init
+Initialized empty Git repository in /home/student/Desktop/INeedHelp/.git/
+[student@localhost INeedHelp]$ ll
+total 0
+[student@localhost INeedHelp]$ ls
+[student@localhost INeedHelp]$ ls -la
+total 12
+drwxrwxr-x. 3 student student 4096 Mar  8 10:18 .
+drwxr-xr-x. 3 student student 4096 Mar  8 10:16 ..
+drwxrwxr-x. 7 student student 4096 Mar  8 10:18 .git
+[student@localhost INeedHelp]$ touch README.md
+[student@localhost INeedHelp]$ ls -la
+total 12
+drwxrwxr-x. 3 student student 4096 Mar  8 10:19 .
+drwxr-xr-x. 3 student student 4096 Mar  8 10:16 ..
+drwxrwxr-x. 7 student student 4096 Mar  8 10:18 .git
+-rw-rw-r--. 1 student student    0 Mar  8 10:19 README.md
+[student@localhost INeedHelp]$ nano README.md
+bash: nano: command not found...
+Install package 'nano' to provide command 'nano'? [N/y] y
+
+
+ * Waiting in queue... 
+The following packages have to be installed:
+ nano-2.9.8-1.fc28.x86_64	A small text editor
+Proceed with changes? [N/y] y
+
+
+ * Waiting in queue... 
+ * Waiting for authentication... 
+ * Waiting in queue... 
+ * Downloading packages... 
+ * Requesting data... 
+ * Testing changes... 
+ * Installing packages... 
+Too many errors from stdin
+[student@localhost INeedHelp]$ via README.md
+bash: via: command not found...
+[student@localhost INeedHelp]$ git add README.md
+[student@localhost INeedHelp]$ git commit -m "this is muh first commit and im retarded"
+[master (root-commit) 7fe1e94] this is muh first commit and im retarded
+ Committer: student <student@localhost.localdomain>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly. Run the
+following command and follow the instructions in your editor to edit
+your configuration file:
+
+    git config --global --edit
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 README.md
+[student@localhost INeedHelp]$ git remote add origin https://github.com/NeedNamePLS/INeedHelp.git
+[student@localhost INeedHelp]$ git push -u origin master
+Username for 'https://github.com': NeedNamePLS
+Password for 'https://NeedNamePLS@github.com': 
+Counting objects: 3, done.
+Writing objects: 100% (3/3), 228 bytes | 228.00 KiB/s, done.
+Total 3 (delta 0), reused 0 (delta 0)
+To https://github.com/NeedNamePLS/INeedHelp.git
+ * [new branch]      master -> master
+Branch 'master' set up to track remote branch 'master' from 'origin'.
+
