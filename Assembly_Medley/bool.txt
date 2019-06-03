@@ -1,0 +1,12 @@
+Boolean Rev
+
+1. (NOT X) OR Y
+   X = False | Y = True
+
+2. X AND Y
+   X = True | Y = True
+
+3. 
+4. 
+5. T
+   

