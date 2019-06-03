@@ -1,0 +1,54 @@
+Python Review Corrections
+***********************************************************************
+6.2 	The header of a function consists of ____________.
+ A. function name 
+ B. function name and parameter list
+ C. parameter list
+
+Your answer A is incorrect 
+The correct answer is B
+
+***********************************************************************
+6.6  Each time a function is invoked, the system stores parameters and local variables in an area of memory, known as _______, which stores elements in last-in first-out fashion.
+ A. a heap
+ B. storage area
+ C. a stack
+ D. an array
+
+Your answer B is incorrect 
+The correct answer is C
+
+***********************************************************************
+6.10  Given the following function header:
+
+def f(p1, p2, p3, p4)
+
+Which of the following is correct to invoke it?
+ A. f(1, 2, 3, 4)
+ B. f(p1 = 1, 2, 3, 4)
+ C. f(p1 = 1, p2 = 2, p3 = 3, 4)
+ D. f(p1 = 1, p2 = 2, p3 = 3, p4 = 4)
+ E. f(1, 2, 3, p4 = 4)
+
+Your answer A is incorrect 
+The correct answer is ADE
+
+***********************************************************************
+6.15  When you invoke a function with a parameter, the value of the argument is passed to the parameter. This is referred to as _________.
+ A. function invocation
+ B. pass by value
+ C. pass by reference
+ D. pass by name
+
+Your answer C is incorrect 
+The correct answer is B
+
+***********************************************************************
+6.16  A variable defined inside a function is referred to as __________.
+ A. a global variable
+ B. a function variable
+ C. a block variable
+ D. a local variable
+
+Your answer B is incorrect 
+The correct answer is D
